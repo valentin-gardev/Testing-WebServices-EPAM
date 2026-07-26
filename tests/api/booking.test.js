@@ -1,5 +1,6 @@
 import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
+import { BookingClient } from './helpers/bookingClient.js'
 
 const URL_Base = 'https://restful-booker.herokuapp.com'
 
@@ -26,54 +27,35 @@ const bookingUpdate = {
     "additionalneeds" : "Breakfast"
 }
 
-let token;
-let bookingID;
 
 describe('Resetful Booker API Flow', () => {
 
+    let client
+    let bookingID
 
+    before(() => {
+        client = new BookingClient(URL_Base)
+    })
     it('POST: Login and save token', async() => {
-        const response = await fetch(`${URL_Base}/auth`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                username: 'admin',
-                password: 'password123'
-            })
+        const {status, headers, body} = await client.createToken('admin', 'password123')
 
-        })
-
-        assert.equal(response.status, 200)
-
-        assert.ok(
-            response.headers.get('content-type').includes('application/json'),
-            'content-type should be application/json'
-        )
-
-        const body = await response.json()
-
+        assert.equal(status, 200)
         assert.ok(body.token, 'Token exists')
 
-        token = body.token
-        console.log(`token is ${token}`)
+        client.setToken(body.token)
     })
 
 
     it('POST: Create new booking', async() => {
-        const response = await fetch(`${URL_Base}/booking`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body : JSON.stringify(bookingSetup)
-        })
+        const { status, headers, body } = await client.createNewBooking(bookingSetup)
 
-        assert.strictEqual(response.status, 200, 'Booking status should be 200')
+        assert.strictEqual(status, 200, 'Booking status should be 200')
 
         assert.ok(
-            response.headers.get('content-type').includes('application/json'),
+            headers.get('content-type').includes('application/json'),
             'content-type should be application/json'
         )
 
-        const body = await response.json()
         assert.ok(body.bookingid, 'Response should contain bookingid')
 
         bookingID = body.bookingid
