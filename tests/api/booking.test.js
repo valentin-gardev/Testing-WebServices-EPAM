@@ -16,7 +16,7 @@ const bookingSetup = {
     "additionalneeds" : "Breakfast"
 }
 const bookingUpdate = {
-    "firstname" : "Valelntin",
+    "firstname" : "Valentin",
     "lastname" : "Gardev",
     "totalprice" : 111,
     "depositpaid" : true,
@@ -63,56 +63,29 @@ describe('Resetful Booker API Flow', () => {
 
 
     it('GET: Get booking by ID', async() => {
-        const response = await fetch(`${URL_Base}/booking/${bookingID}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
+        const { status, headers, body } = await client.getNewBooking(bookingID)
 
-        assert.strictEqual(response.status, 200, 'Getting booking should be 200')
-        const body = await response.json()
-        assert.strictEqual(body.firstname, bookingSetup.firstname, 'First names do not match')
+        assert.strictEqual(status, 200, 'Getting booking should be 200')
+        assert.strictEqual(body.firstname, bookingSetup.firstname, 'First names should match')
     })
 
 
     it('PUT: Update booking name', async() => {
-        const response = await fetch(`${URL_Base}/booking/${bookingID}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Cookie': `token=${token}`
-            },
-            body: JSON.stringify(bookingUpdate)
-        })
+        const { status, headers, body } = await client.updateBooking(bookingID, bookingUpdate)
 
-        assert.strictEqual(response.status, 200, 'Update booking should be 200')
+        assert.strictEqual(status, 200, 'Update booking should be 200')
+        assert.strictEqual(body.firstname, 'Valentin', 'First name should be updated to Valentin')
+        assert.strictEqual(body.lastname, 'Gardev', 'Last name should be updated to Gardev')
     })
 
     it('DELETE: Delete booking', async() => {
-        
-        assert.ok(bookingID, 'ID must exist')
-        assert.ok(token, 'Token must exist')
 
-        const deleteResponse = await fetch(`${URL_Base}/booking/${bookingID}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Cookie': `token=${token}`
-            }
-        })
+        const { status } = await client.deleteBooking(bookingID)
 
-        assert.strictEqual(deleteResponse.status, 201, 'Delete status should be 201')
+        assert.strictEqual(status, 201, 'Delete status should be 201')
 
-        const getDeletedResponse = await fetch(`${URL_Base}/booking/${bookingID}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
-
-        assert.strictEqual(getDeletedResponse.status, 404, 'Status should be 404, doesnt exist')
+        const {status: statusGet, headers: headersGet, body: bodyGet } = await client.getNewBooking(bookingID)
+        assert.strictEqual(statusGet, 404, 'Status should be 404, doesnt exist')
     })
 
 
