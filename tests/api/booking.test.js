@@ -1,5 +1,6 @@
 import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
+import { BookingClient } from './helpers/bookingClient.js'
 
 const URL_Base = 'https://restful-booker.herokuapp.com'
 
@@ -15,7 +16,7 @@ const bookingSetup = {
     "additionalneeds" : "Breakfast"
 }
 const bookingUpdate = {
-    "firstname" : "Valelntin",
+    "firstname" : "Valentin",
     "lastname" : "Gardev",
     "totalprice" : 111,
     "depositpaid" : true,
@@ -26,111 +27,69 @@ const bookingUpdate = {
     "additionalneeds" : "Breakfast"
 }
 
-let token;
-let bookingID;
 
 describe('Resetful Booker API Flow', () => {
 
+    let client
+    let bookingID
 
+    before(async() => {
+        client = new BookingClient(URL_Base)
+        const authentic = await client.createToken('admin', 'password123')
+        assert.strictEqual(authentic.status, 200)
+        assert.ok(authentic.body.token, 'Token exists')
+
+        client.setToken(authentic.body.token)
+
+        const booingFix = await client.createNewBooking(bookingSetup)
+        assert.strictEqual(booingFix.status, 200, 'Booking status should be 200')
+        assert.ok(booingFix.body.bookingid, 'Response should contain bookingid')
+
+        bookingID = booingFix.body.bookingid
+    })
     it('POST: Login and save token', async() => {
-        const response = await fetch(`${URL_Base}/auth`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                username: 'admin',
-                password: 'password123'
-            })
-
-        })
-
-        assert.equal(response.status, 200)
-
-        assert.ok(
-            response.headers.get('content-type').includes('application/json'),
-            'content-type should be application/json'
-        )
-
-        const body = await response.json()
-
+        const {status, headers, body} = await client.createToken('admin', 'password123')
+        assert.strictEqual(status, 200)
         assert.ok(body.token, 'Token exists')
-
-        token = body.token
-        console.log(`token is ${token}`)
     })
 
 
     it('POST: Create new booking', async() => {
-        const response = await fetch(`${URL_Base}/booking`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body : JSON.stringify(bookingSetup)
-        })
+        const { status, headers, body } = await client.createNewBooking(bookingSetup)
 
-        assert.strictEqual(response.status, 200, 'Booking status should be 200')
-
+        assert.strictEqual(status, 200, 'Booking status should be 200')
         assert.ok(
-            response.headers.get('content-type').includes('application/json'),
+            headers.get('content-type').includes('application/json'),
             'content-type should be application/json'
         )
-
-        const body = await response.json()
         assert.ok(body.bookingid, 'Response should contain bookingid')
-
-        bookingID = body.bookingid
     })
 
 
     it('GET: Get booking by ID', async() => {
-        const response = await fetch(`${URL_Base}/booking/${bookingID}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
+        const { status, headers, body } = await client.getNewBooking(bookingID)
 
-        assert.strictEqual(response.status, 200, 'Getting booking should be 200')
-        const body = await response.json()
-        assert.strictEqual(body.firstname, bookingSetup.firstname, 'First names do not match')
+        assert.strictEqual(status, 200, 'Getting booking should be 200')
+        assert.strictEqual(body.firstname, bookingSetup.firstname, 'First names should match')
     })
 
 
     it('PUT: Update booking name', async() => {
-        const response = await fetch(`${URL_Base}/booking/${bookingID}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'Cookie': `token=${token}`
-            },
-            body: JSON.stringify(bookingUpdate)
-        })
+        const { status, headers, body } = await client.updateBooking(bookingID, bookingUpdate)
 
-        assert.strictEqual(response.status, 200, 'Update booking should be 200')
+        assert.strictEqual(status, 200, 'Update booking should be 200')
+        assert.strictEqual(body.firstname, bookingUpdate.firstname, 'First name should match update name')
+        assert.strictEqual(body.lastname, bookingUpdate.lastname, 'Last name should match update name')
     })
 
     it('DELETE: Delete booking', async() => {
-        
-        assert.ok(bookingID, 'ID must exist')
-        assert.ok(token, 'Token must exist')
 
-        const deleteResponse = await fetch(`${URL_Base}/booking/${bookingID}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Cookie': `token=${token}`
-            }
-        })
+        const { status } = await client.deleteBooking(bookingID)
 
-        assert.strictEqual(deleteResponse.status, 201, 'Delete status should be 201')
+        assert.strictEqual(status, 201, 'Delete status should be 201')
 
-        const getDeletedResponse = await fetch(`${URL_Base}/booking/${bookingID}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            }
-        })
-
-        assert.strictEqual(getDeletedResponse.status, 404, 'Status should be 404, doesnt exist')
+        const {status: statusGet, headers: headersGet, body: bodyGet } = await client.getNewBooking(bookingID)
+        assert.strictEqual(statusGet, 404, 'Status should be 404, doesnt exist')
     })
 
 
