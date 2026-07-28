@@ -33,16 +33,24 @@ describe('Resetful Booker API Flow', () => {
     let client
     let bookingID
 
-    before(() => {
+    before(async() => {
         client = new BookingClient(URL_Base)
+        const authentic = await client.createToken('admin', 'password123')
+        assert.strictEqual(authentic.status, 200)
+        assert.ok(authentic.body.token, 'Token exists')
+
+        client.setToken(authentic.body.token)
+
+        const booingFix = await client.createNewBooking(bookingSetup)
+        assert.strictEqual(booingFix.status, 200, 'Booking status should be 200')
+        assert.ok(booingFix.body.bookingid, 'Response should contain bookingid')
+
+        bookingID = booingFix.body.bookingid
     })
     it('POST: Login and save token', async() => {
         const {status, headers, body} = await client.createToken('admin', 'password123')
-
-        assert.equal(status, 200)
+        assert.strictEqual(status, 200)
         assert.ok(body.token, 'Token exists')
-
-        client.setToken(body.token)
     })
 
 
@@ -50,15 +58,11 @@ describe('Resetful Booker API Flow', () => {
         const { status, headers, body } = await client.createNewBooking(bookingSetup)
 
         assert.strictEqual(status, 200, 'Booking status should be 200')
-
         assert.ok(
             headers.get('content-type').includes('application/json'),
             'content-type should be application/json'
         )
-
         assert.ok(body.bookingid, 'Response should contain bookingid')
-
-        bookingID = body.bookingid
     })
 
 
@@ -74,8 +78,8 @@ describe('Resetful Booker API Flow', () => {
         const { status, headers, body } = await client.updateBooking(bookingID, bookingUpdate)
 
         assert.strictEqual(status, 200, 'Update booking should be 200')
-        assert.strictEqual(body.firstname, 'Valentin', 'First name should be updated to Valentin')
-        assert.strictEqual(body.lastname, 'Gardev', 'Last name should be updated to Gardev')
+        assert.strictEqual(body.firstname, bookingUpdate.firstname, 'First name should match update name')
+        assert.strictEqual(body.lastname, bookingUpdate.lastname, 'Last name should match update name')
     })
 
     it('DELETE: Delete booking', async() => {

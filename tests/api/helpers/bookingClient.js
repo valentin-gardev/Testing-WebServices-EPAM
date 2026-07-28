@@ -60,6 +60,11 @@ export class BookingClient {
     }
 
     async updateBooking(bookingID, bookingUpdate) {
+
+        if(!this.token) {
+            throw new Error('Token is missing!')
+        }
+        
         const response = await fetch(`${this.URL_Base}/booking/${bookingID}`, {
             method: 'PUT',
             headers: {
@@ -78,7 +83,12 @@ export class BookingClient {
     }
 
     async deleteBooking(bookingID) {
-         const deleteResponse = await fetch(`${this.URL_Base}/booking/${bookingID}`, {
+
+        if(!this.token) {
+            throw new Error('Token is missing!')
+        }
+
+         const response = await fetch(`${this.URL_Base}/booking/${bookingID}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -87,7 +97,9 @@ export class BookingClient {
         })
         
         return {
-            status: deleteResponse.status
+            status: response.status,
+            headers: response.headers,
+            body: await response.text()
         }
     }
 
